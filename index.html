@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Mi Registro · Orina e Hidratación</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17A2B4">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#EFF7F9; --card:#FFFFFF; --ink:#16343E; --ink-soft:#5B7A84;
+  --acc:#17A2B4; --acc-deep:#0E7C8C; --acc-pale:#D9F1F4;
+  --coral:#FF7A6B; --coral-pale:#FFE9E6;
+  --amber:#E8A93A; --ok:#3FAE7C; --line:#DCEAEE; --r:20px;
+  --shadow:0 4px 18px rgba(22,52,62,.08);
+}
+body[data-theme="lila"]{--acc:#8E6FD8;--acc-deep:#6A4DB3;--acc-pale:#EAE3F9;--bg:#F4F1FB}
+body[data-theme="rosa"]{--acc:#E96A9C;--acc-deep:#C34578;--acc-pale:#FBE2EC;--bg:#FBF2F6}
+body[data-theme="verde"]{--acc:#3FAE7C;--acc-deep:#2C8A60;--acc-pale:#DDF2E8;--bg:#F0F8F4}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{font-size:16px}
+body{font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:96px;transition:background .3s}
+h1,h2,h3{font-family:'Baloo 2',cursive}
+
+/* ---------- header ---------- */
+header{padding:20px 20px 10px;display:flex;align-items:center;justify-content:space-between}
+header .brand{display:flex;align-items:center;gap:10px}
+header .drop{width:40px;height:40px;border-radius:50% 50% 50% 4px;transform:rotate(45deg);background:linear-gradient(135deg,var(--acc),var(--acc-deep));display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+header .drop span{transform:rotate(-45deg);font-size:19px}
+header h1{font-size:1.25rem;font-weight:800;line-height:1.1}
+header .date{font-size:.78rem;color:var(--ink-soft);font-weight:700;text-transform:capitalize}
+.hbtns{display:flex;gap:8px}
+.hbtn{border:none;background:var(--card);color:var(--acc-deep);font-family:'Nunito';font-weight:800;font-size:.95rem;width:42px;height:42px;border-radius:14px;box-shadow:var(--shadow);cursor:pointer}
+
+/* ---------- estado de guardado ---------- */
+.savebar{max-width:520px;margin:0 auto;padding:0 16px}
+.save-pill{display:flex;align-items:center;gap:8px;font-size:.72rem;font-weight:800;color:var(--ink-soft);padding:6px 2px}
+.save-pill .led{width:9px;height:9px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px rgba(63,174,124,.18)}
+.save-pill.warn .led{background:var(--coral);box-shadow:0 0 0 3px rgba(255,122,107,.2)}
+
+/* ---------- tabs ---------- */
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);display:flex;box-shadow:0 -4px 20px rgba(22,52,62,.10);z-index:50;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;border:none;background:none;padding:12px 0 10px;font-family:'Baloo 2';font-weight:700;font-size:.82rem;color:var(--ink-soft);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button .ico{font-size:1.3rem;line-height:1;transition:.15s}
+nav.tabs button.active{color:var(--acc-deep)}
+nav.tabs button.active .ico{transform:scale(1.15)}
+.page{display:none;padding:2px 16px 24px;max-width:520px;margin:0 auto}
+.page.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- cards ---------- */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px;margin-top:14px}
+.card h2{font-size:1.02rem;font-weight:800;display:flex;align-items:center;gap:8px}
+.card h2 .chip{font-size:.68rem;font-family:'Nunito';font-weight:800;color:var(--acc-deep);background:var(--acc-pale);padding:3px 10px;border-radius:99px;margin-left:auto;white-space:nowrap}
+
+/* ---------- saludo ---------- */
+.hello{margin-top:14px;font-family:'Baloo 2';font-weight:800;font-size:1.35rem;line-height:1.2}
+.hello small{display:block;font-family:'Nunito';font-weight:700;font-size:.8rem;color:var(--ink-soft);margin-top:2px}
+
+/* ---------- hydration ring ---------- */
+.hydro{display:flex;align-items:center;gap:18px}
+.ring-wrap{position:relative;width:132px;height:132px;flex:none}
+.ring-wrap svg{transform:rotate(-90deg)}
+.ring-bg{fill:none;stroke:var(--acc-pale);stroke-width:12}
+.ring-fg{fill:none;stroke:var(--acc);stroke-width:12;stroke-linecap:round;transition:stroke-dashoffset .6s cubic-bezier(.22,1,.36,1)}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring-center .val{font-family:'Baloo 2';font-weight:800;font-size:1.5rem;color:var(--acc-deep);line-height:1}
+.ring-center .goal{font-size:.66rem;font-weight:700;color:var(--ink-soft)}
+.hydro-side{flex:1}
+.hydro-side .msg{font-size:.85rem;font-weight:700;color:var(--ink-soft);margin-bottom:10px;line-height:1.35}
+.qbtns{display:flex;gap:8px;flex-wrap:wrap}
+.qbtn{border:2px solid var(--acc-pale);background:var(--card);color:var(--acc-deep);font-family:'Baloo 2';font-weight:700;font-size:.85rem;padding:9px 12px;border-radius:14px;cursor:pointer;transition:.15s}
+.qbtn:active{transform:scale(.94);background:var(--acc-pale)}
+.qbtn.custom{border-style:dashed;color:var(--ink-soft)}
+.goal-hit{color:var(--ok)!important}
+.undo-water{border:none;background:none;color:var(--ink-soft);font-weight:800;font-size:.72rem;margin-top:8px;cursor:pointer;text-decoration:underline}
+
+/* ---------- pee section ---------- */
+.pee-total{display:flex;align-items:baseline;gap:8px;margin:10px 0 4px}
+.pee-total .big{font-family:'Baloo 2';font-weight:800;font-size:2rem;color:var(--amber)}
+.pee-total .unit{font-weight:800;color:var(--ink-soft);font-size:.85rem}
+.entry-list{margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.entry{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:14px;padding:10px 12px}
+.entry .dot{width:26px;height:26px;border-radius:50% 50% 50% 4px;transform:rotate(45deg);flex:none;border:2px solid rgba(22,52,62,.08)}
+.entry .info{flex:1;min-width:0}
+.entry .ml{font-weight:800;font-size:.95rem}
+.entry .meta{font-size:.72rem;color:var(--ink-soft);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry .del{border:none;background:none;color:#C6535A;font-size:1rem;cursor:pointer;padding:6px}
+.empty{color:var(--ink-soft);font-size:.85rem;font-weight:700;text-align:center;padding:18px 0;line-height:1.5}
+.empty .big-emoji{font-size:1.8rem;display:block;margin-bottom:6px}
+
+/* ---------- FAB ---------- */
+.fab{position:fixed;right:18px;bottom:84px;width:62px;height:62px;border-radius:22px;border:none;background:linear-gradient(135deg,var(--coral),#F05545);color:#fff;font-size:2rem;box-shadow:0 8px 22px rgba(240,85,69,.4);cursor:pointer;z-index:40;display:flex;align-items:center;justify-content:center;transition:.15s}
+.fab:active{transform:scale(.92)}
+
+/* ---------- modal / sheet ---------- */
+.overlay{position:fixed;inset:0;background:rgba(14,40,48,.45);display:none;align-items:flex-end;justify-content:center;z-index:100}
+.overlay.show{display:flex}
+.sheet{background:var(--card);width:100%;max-width:520px;max-height:88vh;overflow-y:auto;border-radius:26px 26px 0 0;padding:22px 20px calc(22px + env(safe-area-inset-bottom));animation:up .3s cubic-bezier(.22,1,.36,1)}
+@keyframes up{from{transform:translateY(40%)}to{transform:none}}
+.sheet h3{font-size:1.15rem;font-weight:800;margin-bottom:14px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.75rem;font-weight:800;color:var(--ink-soft);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.field input,.field select{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px 14px;font-family:'Nunito';font-weight:700;font-size:1rem;color:var(--ink);background:var(--bg)}
+.field input:focus,.field select:focus{outline:none;border-color:var(--acc)}
+.row2{display:flex;gap:10px}.row2 .field{flex:1}
+.colors{display:flex;gap:8px;margin-bottom:22px}
+.color-opt{flex:1;aspect-ratio:1;max-width:52px;border-radius:14px;border:3px solid transparent;cursor:pointer;position:relative}
+.color-opt.sel{border-color:var(--ink);transform:scale(1.05)}
+.color-opt span{position:absolute;bottom:-16px;left:50%;transform:translateX(-50%);font-size:.55rem;font-weight:800;color:var(--ink-soft);white-space:nowrap}
+.sheet-btns{display:flex;gap:10px;margin-top:20px}
+.btn{flex:1;border:none;border-radius:16px;padding:14px;font-family:'Baloo 2';font-weight:700;font-size:1rem;cursor:pointer}
+.btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc-deep));color:#fff}
+.btn.ghost{background:var(--bg);color:var(--ink-soft)}
+
+/* ---------- ajustes ---------- */
+.themes{display:flex;gap:10px;margin-bottom:8px}
+.theme-opt{flex:1;height:52px;border-radius:16px;cursor:pointer;border:3px solid transparent;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2';font-weight:700;font-size:.72rem;color:#fff}
+.theme-opt.sel{border-color:var(--ink)}
+.t-aqua{background:linear-gradient(135deg,#17A2B4,#0E7C8C)}
+.t-lila{background:linear-gradient(135deg,#8E6FD8,#6A4DB3)}
+.t-rosa{background:linear-gradient(135deg,#E96A9C,#C34578)}
+.t-verde{background:linear-gradient(135deg,#3FAE7C,#2C8A60)}
+
+/* ---------- historial ---------- */
+table{width:100%;border-collapse:collapse;margin-top:8px;font-size:.82rem}
+th{text-align:left;font-family:'Baloo 2';font-weight:700;color:var(--ink-soft);font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;padding:8px 6px;border-bottom:2px solid var(--line)}
+td{padding:9px 6px;border-bottom:1px solid var(--line);font-weight:700}
+td.num{font-weight:800}
+.tag-ok{color:var(--ok)}.tag-low{color:var(--coral)}
+.reminder{margin-top:14px;background:var(--coral-pale);border-radius:var(--r);padding:14px 16px;display:none;align-items:center;gap:12px}
+.reminder.show{display:flex}
+.reminder .txt{font-size:.82rem;font-weight:800;color:#B24A3F;flex:1}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:150px;background:var(--ink);color:#fff;font-weight:800;font-size:.85rem;padding:12px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:.3s;z-index:200;max-width:90vw;text-align:center}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="drop"><span>💧</span></div>
+    <div><h1>Mi Registro</h1><div class="date" id="hoyFecha"></div></div>
+  </div>
+  <div class="hbtns">
+    <button class="hbtn" onclick="exportCSV()" title="Exportar datos" aria-label="Exportar">⬇</button>
+    <button class="hbtn" onclick="openSettings()" title="Ajustes" aria-label="Ajustes">⚙</button>
+  </div>
+</header>
+
+<div class="savebar"><div class="save-pill" id="savePill"><span class="led"></span><span id="saveTxt">Guardado automático activo</span></div></div>
+
+<!-- ============ HOY ============ -->
+<div class="page active" id="page-hoy">
+  <div class="hello" id="helloBox"></div>
+
+  <div class="card">
+    <h2>💧 Agua bebida <span class="chip" id="goalChip"></span></h2>
+    <div class="hydro" style="margin-top:12px">
+      <div class="ring-wrap">
+        <svg width="132" height="132" viewBox="0 0 132 132">
+          <circle class="ring-bg" cx="66" cy="66" r="56"/>
+          <circle class="ring-fg" id="ringFg" cx="66" cy="66" r="56" stroke-dasharray="351.86" stroke-dashoffset="351.86"/>
+        </svg>
+        <div class="ring-center">
+          <div class="val" id="aguaVal">0</div>
+          <div class="goal" id="aguaGoalTxt"></div>
+        </div>
+      </div>
+      <div class="hydro-side">
+        <div class="msg" id="aguaMsg"></div>
+        <div class="qbtns">
+          <button class="qbtn" id="qb1" onclick="addAgua(CFG.vaso)"></button>
+          <button class="qbtn" id="qb2" onclick="addAgua(CFG.botella)"></button>
+          <button class="qbtn custom" onclick="addAguaCustom()">+ Otro…</button>
+        </div>
+        <button class="undo-water" id="undoBtn" onclick="undoAgua()" style="display:none">Deshacer último</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="reminder" id="reminderBox">
+    <span style="font-size:1.4rem">⏰</span>
+    <div class="txt">Llevas un rato sin registrar agua. ¡Un traguito ahora te acerca a la meta!</div>
+  </div>
+
+  <div class="card">
+    <h2>🚽 Orina de hoy <span class="chip" id="peeChip">0 vaciados</span></h2>
+    <div class="pee-total">
+      <span class="big" id="peeTotal">0</span><span class="unit">ml en total</span>
+    </div>
+    <div class="entry-list" id="peeList"></div>
+  </div>
+</div>
+
+<!-- ============ HISTORIAL ============ -->
+<div class="page" id="page-hist">
+  <div class="card">
+    <h2>📊 Orina por día <span class="chip">ml</span></h2>
+    <canvas id="chartPee" height="190"></canvas>
+  </div>
+  <div class="card">
+    <h2>💧 Agua por día <span class="chip" id="chipMetaHist"></span></h2>
+    <canvas id="chartAgua" height="190"></canvas>
+  </div>
+  <div class="card">
+    <h2>🗓️ Resumen diario</h2>
+    <table>
+      <thead><tr><th>Día</th><th>Orina</th><th>Vaciados</th><th>Agua</th></tr></thead>
+      <tbody id="histBody"></tbody>
+    </table>
+    <div class="empty" id="histEmpty" style="display:none"><span class="big-emoji">🌱</span>Todavía no hay días registrados.</div>
+  </div>
+</div>
+
+<button class="fab" onclick="openSheet()" aria-label="Añadir vaciado">+</button>
+
+<nav class="tabs">
+  <button class="active" id="tabHoy" onclick="go('hoy')"><span class="ico">🏠</span>Hoy</button>
+  <button id="tabHist" onclick="go('hist')"><span class="ico">📈</span>Historial</button>
+</nav>
+
+<!-- ============ SHEET NUEVO VACIADO ============ -->
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <h3>🚽 Nuevo vaciado</h3>
+    <div class="row2">
+      <div class="field">
+        <label>Cantidad (ml) *</label>
+        <input type="number" id="inMl" inputmode="numeric" placeholder="p. ej. 350" min="1" max="3000">
+      </div>
+      <div class="field">
+        <label>Hora</label>
+        <input type="time" id="inHora">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:4px"><label>Color (opcional)</label></div>
+    <div class="colors" id="colorPick">
+      <div class="color-opt" data-c="Claro" style="background:#F7F3D8"><span>Claro</span></div>
+      <div class="color-opt" data-c="Amarillo" style="background:#F2DF7E"><span>Amarillo</span></div>
+      <div class="color-opt" data-c="Oscuro" style="background:#DDA93B"><span>Oscuro</span></div>
+      <div class="color-opt" data-c="Ámbar" style="background:#B87A1E"><span>Ámbar</span></div>
+      <div class="color-opt" data-c="Rojizo" style="background:#C05B4E"><span>Rojizo</span></div>
+    </div>
+    <div class="field">
+      <label>Notas (opcional)</label>
+      <input type="text" id="inNota" placeholder="p. ej. molestias, aspecto turbio…" maxlength="80">
+    </div>
+    <div class="sheet-btns">
+      <button class="btn ghost" onclick="closeSheet()">Cancelar</button>
+      <button class="btn primary" onclick="savePee()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SHEET AJUSTES ============ -->
+<div class="overlay" id="overlaySet">
+  <div class="sheet">
+    <h3>⚙ Ajustes</h3>
+    <div class="field">
+      <label>Tu nombre</label>
+      <input type="text" id="setNombre" placeholder="¿Cómo te llamas?" maxlength="20">
+    </div>
+    <div class="field">
+      <label>Meta de agua diaria (ml)</label>
+      <input type="number" id="setMeta" inputmode="numeric" min="500" max="5000" step="100">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>Botón "vaso" (ml)</label>
+        <input type="number" id="setVaso" inputmode="numeric" min="50" max="1000" step="50">
+      </div>
+      <div class="field">
+        <label>Botón "botella" (ml)</label>
+        <input type="number" id="setBotella" inputmode="numeric" min="100" max="2000" step="50">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:6px"><label>Color de la app</label></div>
+    <div class="themes">
+      <div class="theme-opt t-aqua" data-t="aqua">Aqua</div>
+      <div class="theme-opt t-lila" data-t="lila">Lila</div>
+      <div class="theme-opt t-rosa" data-t="rosa">Rosa</div>
+      <div class="theme-opt t-verde" data-t="verde">Verde</div>
+    </div>
+    <div class="sheet-btns">
+      <button class="btn ghost" onclick="closeSettings()">Cancelar</button>
+      <button class="btn primary" onclick="saveSettings()">Guardar ajustes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================================================================
+   ALMACENAMIENTO PERSISTENTE
+   1º localStorage (navegador del móvil: persiste al cerrar y abrir)
+   2º window.storage (cuando la app se abre dentro de Claude)
+   3º memoria (último recurso, con aviso visible)
+   ================================================================ */
+const KEY='registro-diuresis-v2';
+let DATA={pee:[],agua:[]};
+let CFG={nombre:'',meta:2500,vaso:250,botella:500,tema:'aqua'};
+let storageMode='mem';
+
+function tryLocalStorage(){
+  try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; }
+}
+async function loadData(){
+  let raw=null;
+  if(tryLocalStorage()){
+    storageMode='local';
+    raw=localStorage.getItem(KEY);
+  }
+  if(raw===null && typeof window.storage!=='undefined'){
+    try{ const r=await window.storage.get(KEY); if(r&&r.value){ raw=r.value; if(storageMode!=='local') storageMode='claude'; } }
+    catch(e){ if(storageMode!=='local') storageMode = (typeof window.storage!=='undefined')?'claude':'mem'; }
+  }
+  if(raw){
+    try{ const obj=JSON.parse(raw); DATA=obj.data||DATA; CFG={...CFG,...(obj.cfg||{})}; }catch(e){}
+  }
+  updateSavePill();
+  applyTheme(); renderAll();
+}
+async function persist(){
+  const raw=JSON.stringify({data:DATA,cfg:CFG,v:2,saved:new Date().toISOString()});
+  let ok=false;
+  if(storageMode==='local'||tryLocalStorage()){
+    try{ localStorage.setItem(KEY,raw); ok=true; storageMode='local'; }catch(e){}
+  }
+  if(typeof window.storage!=='undefined'){
+    try{ await window.storage.set(KEY,raw); if(!ok){ok=true;storageMode='claude';} }catch(e){}
+  }
+  if(!ok) storageMode='mem';
+  updateSavePill();
+  /* verificación inmediata de que lo escrito se puede releer */
+  if(storageMode==='local'){
+    const check=localStorage.getItem(KEY);
+    if(check!==raw){ storageMode='mem'; updateSavePill(); }
+  }
+}
+function updateSavePill(){
+  const pill=document.getElementById('savePill'), txt=document.getElementById('saveTxt');
+  if(storageMode==='mem'){
+    pill.classList.add('warn');
+    txt.textContent='⚠ Sin guardado permanente en este navegador — exporta tus datos';
+  }else{
+    pill.classList.remove('warn');
+    txt.textContent='Guardado automático activo · tus datos se conservan al cerrar';
+  }
+}
+
+/* ================= utilidades ================= */
+const hoy=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const horaAhora=()=>{const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');};
+const fmtDia=iso=>{const[y,m,dd]=iso.split('-');const dias=['dom','lun','mar','mié','jue','vie','sáb'];const dt=new Date(y,m-1,dd);return dias[dt.getDay()]+' '+dd+'/'+m;};
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+const COLOR_HEX={Claro:'#F7F3D8',Amarillo:'#F2DF7E',Oscuro:'#DDA93B','Ámbar':'#B87A1E',Rojizo:'#C05B4E'};
+
+/* ================= agua ================= */
+async function addAgua(ml){
+  DATA.agua.push({d:hoy(),t:horaAhora(),ml});
+  await persist();renderAll();
+  const tot=totalAguaHoy();
+  toast(tot>=CFG.meta?'🎉 ¡Meta de agua conseguida!':'💧 +'+ml+' ml · llevas '+tot+' ml');
+}
+function addAguaCustom(){
+  const v=prompt('¿Cuántos ml has bebido?');
+  const n=parseInt(v,10);
+  if(n>0&&n<=2000)addAgua(n);
+  else if(v!==null)toast('Introduce una cantidad entre 1 y 2000 ml');
+}
+async function undoAgua(){
+  const idx=DATA.agua.map((a,i)=>a.d===hoy()?i:-1).filter(i=>i>=0).pop();
+  if(idx===undefined)return;
+  const rem=DATA.agua.splice(idx,1)[0];
+  await persist();renderAll();
+  toast('↩ Quitados '+rem.ml+' ml de agua');
+}
+function totalAguaHoy(){return DATA.agua.filter(a=>a.d===hoy()).reduce((s,a)=>s+a.ml,0);}
+
+/* ================= orina ================= */
+let selColor=null;
+function openSheet(){
+  document.getElementById('inMl').value='';
+  document.getElementById('inHora').value=horaAhora();
+  document.getElementById('inNota').value='';
+  selColor=null;
+  document.querySelectorAll('#colorPick .color-opt').forEach(el=>el.classList.remove('sel'));
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(()=>document.getElementById('inMl').focus(),150);
+}
+function closeSheet(){document.getElementById('overlay').classList.remove('show');}
+document.getElementById('overlay').addEventListener('click',e=>{if(e.target.id==='overlay')closeSheet();});
+document.querySelectorAll('#colorPick .color-opt').forEach(el=>{
+  el.addEventListener('click',()=>{
+    const was=el.classList.contains('sel');
+    document.querySelectorAll('#colorPick .color-opt').forEach(x=>x.classList.remove('sel'));
+    if(!was){el.classList.add('sel');selColor=el.dataset.c;}else selColor=null;
+  });
+});
+async function savePee(){
+  const ml=parseInt(document.getElementById('inMl').value,10);
+  if(!(ml>0&&ml<=3000)){toast('Indica la cantidad en ml (1–3000)');return;}
+  const t=document.getElementById('inHora').value||horaAhora();
+  const nota=document.getElementById('inNota').value.trim();
+  DATA.pee.push({d:hoy(),t,ml,color:selColor||'',nota});
+  await persist();closeSheet();renderAll();
+  toast('✅ Vaciado guardado: '+ml+' ml');
+}
+async function delPee(idx){
+  if(!confirm('¿Borrar este registro?'))return;
+  DATA.pee.splice(idx,1);
+  await persist();renderAll();
+}
+
+/* ================= ajustes ================= */
+function applyTheme(){document.body.dataset.theme=CFG.tema==='aqua'?'':CFG.tema;}
+function openSettings(){
+  document.getElementById('setNombre').value=CFG.nombre;
+  document.getElementById('setMeta').value=CFG.meta;
+  document.getElementById('setVaso').value=CFG.vaso;
+  document.getElementById('setBotella').value=CFG.botella;
+  document.querySelectorAll('.theme-opt').forEach(el=>el.classList.toggle('sel',el.dataset.t===CFG.tema));
+  document.getElementById('overlaySet').classList.add('show');
+}
+function closeSettings(){document.getElementById('overlaySet').classList.remove('show');}
+document.getElementById('overlaySet').addEventListener('click',e=>{if(e.target.id==='overlaySet')closeSettings();});
+document.querySelectorAll('.theme-opt').forEach(el=>{
+  el.addEventListener('click',()=>{
+    document.querySelectorAll('.theme-opt').forEach(x=>x.classList.remove('sel'));
+    el.classList.add('sel');
+  });
+});
+async function saveSettings(){
+  const meta=parseInt(document.getElementById('setMeta').value,10);
+  const vaso=parseInt(document.getElementById('setVaso').value,10);
+  const bot=parseInt(document.getElementById('setBotella').value,10);
+  if(!(meta>=500&&meta<=5000)){toast('La meta debe estar entre 500 y 5000 ml');return;}
+  if(!(vaso>=50&&vaso<=1000)||!(bot>=100&&bot<=2000)){toast('Revisa los ml de los botones rápidos');return;}
+  CFG.nombre=document.getElementById('setNombre').value.trim();
+  CFG.meta=meta;CFG.vaso=vaso;CFG.botella=bot;
+  const sel=document.querySelector('.theme-opt.sel');
+  CFG.tema=sel?sel.dataset.t:'aqua';
+  await persist();applyTheme();closeSettings();renderAll();
+  toast('⚙ Ajustes guardados');
+}
+
+/* ================= render ================= */
+function renderAll(){renderHoy();renderHist();}
+
+function renderHoy(){
+  document.getElementById('hoyFecha').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  const hh=new Date().getHours();
+  const salu=hh<12?'Buenos días':hh<20?'¡Hola':'Buenas noches';
+  const nom=CFG.nombre?(salu.startsWith('¡')?salu+', '+CFG.nombre+'!':salu+', '+CFG.nombre):(salu.startsWith('¡')?salu+'!':salu);
+  document.getElementById('helloBox').innerHTML=nom+'<small>Registra cada vaciado y ve sumando agua 💪</small>';
+  /* agua */
+  const tot=totalAguaHoy();
+  const metaL=(CFG.meta/1000).toLocaleString('es-ES',{maximumFractionDigits:1});
+  document.getElementById('goalChip').textContent='Meta: '+metaL+' L';
+  document.getElementById('chipMetaHist').textContent='meta '+CFG.meta.toLocaleString('es-ES')+' ml';
+  document.getElementById('aguaGoalTxt').textContent='de '+CFG.meta.toLocaleString('es-ES')+' ml';
+  document.getElementById('qb1').textContent='+ Vaso '+CFG.vaso;
+  document.getElementById('qb2').textContent='+ Botella '+CFG.botella;
+  const pct=Math.min(tot/CFG.meta,1),C=351.86;
+  document.getElementById('ringFg').style.strokeDashoffset=C*(1-pct);
+  const valEl=document.getElementById('aguaVal');
+  valEl.textContent=tot>=1000?(tot/1000).toFixed(2).replace('.',',')+' L':tot;
+  valEl.classList.toggle('goal-hit',tot>=CFG.meta);
+  document.getElementById('aguaMsg').textContent=
+    tot>=CFG.meta?'🎉 ¡Meta cumplida! Sigue así, cada trago cuenta.'
+    :tot>=CFG.meta*0.7?'¡Ya casi! Te faltan '+(CFG.meta-tot)+' ml para la meta. 💪'
+    :tot>=CFG.meta*0.35?'Buen ritmo 🙌 Llevas '+tot+' ml. ¡No pares!'
+    :'¡Empieza a sumar! Un vaso ahora te pone en marcha. 🌊';
+  document.getElementById('undoBtn').style.display=DATA.agua.some(a=>a.d===hoy())?'inline':'none';
+  /* recordatorio visual */
+  const ultima=DATA.agua.filter(a=>a.d===hoy()).slice(-1)[0];
+  let show=false;
+  if(hh>=8&&hh<=22&&tot<CFG.meta){
+    if(!ultima)show=hh>=10;
+    else{const[uh,um]=ultima.t.split(':').map(Number);show=(new Date().getHours()*60+new Date().getMinutes())-(uh*60+um)>120;}
+  }
+  document.getElementById('reminderBox').classList.toggle('show',show);
+  /* orina */
+  const entradas=DATA.pee.map((p,i)=>({...p,_i:i})).filter(p=>p.d===hoy()).sort((a,b)=>b.t.localeCompare(a.t));
+  const totPee=entradas.reduce((s,p)=>s+p.ml,0);
+  document.getElementById('peeTotal').textContent=totPee;
+  document.getElementById('peeChip').textContent=entradas.length+(entradas.length===1?' vaciado':' vaciados');
+  const list=document.getElementById('peeList');
+  if(!entradas.length){
+    list.innerHTML='<div class="empty"><span class="big-emoji">📋</span>Aún no hay registros hoy.<br>Pulsa el botón <b style="color:var(--coral)">+</b> cada vez que vacíes la bolsa.</div>';
+  }else{
+    list.innerHTML=entradas.map(p=>`
+      <div class="entry">
+        <div class="dot" style="background:${p.color?COLOR_HEX[p.color]:'#E3EDF0'}"></div>
+        <div class="info">
+          <div class="ml">${p.ml} ml <span style="font-weight:700;color:var(--ink-soft);font-size:.78rem">· ${p.t}</span></div>
+          <div class="meta">${[p.color,p.nota].filter(Boolean).join(' · ')||'&nbsp;'}</div>
+        </div>
+        <button class="del" onclick="delPee(${p._i})" aria-label="Borrar">✕</button>
+      </div>`).join('');
+  }
+}
+
+/* -------- historial -------- */
+let chPee=null,chAgua=null;
+function dailyMap(){
+  const days={};
+  DATA.pee.forEach(p=>{days[p.d]=days[p.d]||{pee:0,n:0,agua:0};days[p.d].pee+=p.ml;days[p.d].n++;});
+  DATA.agua.forEach(a=>{days[a.d]=days[a.d]||{pee:0,n:0,agua:0};days[a.d].agua+=a.ml;});
+  return Object.keys(days).sort().map(d=>({d,...days[d]}));
+}
+function accColor(){return getComputedStyle(document.body).getPropertyValue('--acc').trim()||'#17A2B4';}
+function accDeep(){return getComputedStyle(document.body).getPropertyValue('--acc-deep').trim()||'#0E7C8C';}
+function renderHist(){
+  const rows=dailyMap();
+  const body=document.getElementById('histBody');
+  document.getElementById('histEmpty').style.display=rows.length?'none':'block';
+  body.innerHTML=rows.slice().reverse().map(r=>`
+    <tr><td>${fmtDia(r.d)}</td>
+    <td class="num">${r.pee} ml</td>
+    <td>${r.n}</td>
+    <td class="num ${r.agua>=CFG.meta?'tag-ok':'tag-low'}">${r.agua} ml</td></tr>`).join('');
+  if(typeof Chart==='undefined')return;
+  const last=rows.slice(-14);
+  const labels=last.map(r=>fmtDia(r.d));
+  Chart.defaults.font.family='Nunito';Chart.defaults.font.weight='700';Chart.defaults.color='#5B7A84';
+  if(chPee)chPee.destroy();
+  chPee=new Chart(document.getElementById('chartPee'),{
+    type:'bar',
+    data:{labels,datasets:[{data:last.map(r=>r.pee),backgroundColor:'#E8A93A',borderRadius:8,maxBarThickness:34}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#E7F0F3'}},x:{grid:{display:false}}}}
+  });
+  if(chAgua)chAgua.destroy();
+  chAgua=new Chart(document.getElementById('chartAgua'),{
+    type:'line',
+    data:{labels,datasets:[
+      {data:last.map(r=>r.agua),borderColor:accColor(),backgroundColor:'rgba(23,162,180,.12)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:accDeep()},
+      {data:last.map(()=>CFG.meta),borderColor:'#FF7A6B',borderDash:[6,5],pointRadius:0,fill:false}
+    ]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#E7F0F3'}},x:{grid:{display:false}}}}
+  });
+}
+
+/* -------- export CSV -------- */
+function exportCSV(){
+  let csv='REGISTRO DE ORINA\nFecha;Hora;Cantidad (ml);Color;Notas\n';
+  DATA.pee.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).forEach(p=>{
+    csv+=`${p.d};${p.t};${p.ml};${p.color||''};"${(p.nota||'').replace(/"/g,'""')}"\n`;
+  });
+  csv+='\nREGISTRO DE AGUA\nFecha;Hora;Cantidad (ml)\n';
+  DATA.agua.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).forEach(a=>{csv+=`${a.d};${a.t};${a.ml}\n`;});
+  csv+='\nRESUMEN DIARIO\nFecha;Orina total (ml);Vaciados;Agua total (ml)\n';
+  dailyMap().forEach(r=>{csv+=`${r.d};${r.pee};${r.n};${r.agua}\n`;});
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='registro-salud-'+hoy()+'.csv';
+  a.click();URL.revokeObjectURL(a.href);
+  toast('⬇ Datos exportados en CSV');
+}
+
+/* -------- navegación -------- */
+function go(p){
+  document.getElementById('page-hoy').classList.toggle('active',p==='hoy');
+  document.getElementById('page-hist').classList.toggle('active',p==='hist');
+  document.getElementById('tabHoy').classList.toggle('active',p==='hoy');
+  document.getElementById('tabHist').classList.toggle('active',p==='hist');
+  document.querySelector('.fab').style.display=p==='hoy'?'flex':'none';
+  if(p==='hist')renderHist();
+}
+
+setInterval(renderHoy,60000);
+loadData();
+
+/* -------- PWA: registro del service worker -------- */
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

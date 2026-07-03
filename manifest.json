@@ -1,0 +1,17 @@
+{
+  "name": "Mi Registro · Orina e Hidratación",
+  "short_name": "Mi Registro",
+  "description": "Registro diario de vaciados de orina e hidratación",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#EFF7F9",
+  "theme_color": "#17A2B4",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
