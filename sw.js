@@ -1,17 +1,18 @@
-const CACHE = 'mi-registro-v1';
+const CACHE = 'mi-registro-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png',
-  'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-  'https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@400;600;700;800&display=swap'
+  './icon-512.png'
 ];
 
+// Instalación robusta: cachea lo que pueda, nunca falla
 self.addEventListener('install', e => {
   e.waitUntil(
-    caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting())
+    caches.open(CACHE).then(c =>
+      Promise.allSettled(ASSETS.map(a => c.add(a)))
+    ).then(() => self.skipWaiting())
   );
 });
 
@@ -23,15 +24,15 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Estrategia: caché primero, red como respaldo (la app funciona sin conexión)
+// Caché primero, red como respaldo; guarda sobre la marcha lo que se pida
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
   e.respondWith(
     caches.match(e.request).then(hit =>
       hit || fetch(e.request).then(res => {
-        // guarda en caché las fuentes/recursos que se pidan sobre la marcha
-        if (e.request.url.startsWith('http') && res.ok) {
+        if (res && res.ok && e.request.url.startsWith('http')) {
           const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone));
+          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
         }
         return res;
       }).catch(() => caches.match('./index.html'))
