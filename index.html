@@ -138,6 +138,19 @@ td.num{font-weight:800}
 .reminder .txt{font-size:.82rem;font-weight:800;color:#B24A3F;flex:1}
 .toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:150px;background:var(--ink);color:#fff;font-weight:800;font-size:.85rem;padding:12px 20px;border-radius:99px;opacity:0;pointer-events:none;transition:.3s;z-index:200;max-width:90vw;text-align:center}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.field select{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px 14px;font-family:'Nunito';font-weight:700;font-size:1rem;color:var(--ink);background:var(--bg)}
+#reportArea{display:none}
+@media print{
+  body *{visibility:hidden}
+  #reportArea,#reportArea *{visibility:visible}
+  #reportArea{display:block;position:absolute;top:0;left:0;width:100%;font-family:Arial,sans-serif;color:#000;background:#fff;padding:10px}
+  #reportArea h1{font-size:18px;margin-bottom:4px}
+  #reportArea h2{font-size:14px;margin:14px 0 6px}
+  #reportArea p{font-size:11px;margin:2px 0}
+  #reportArea table{width:100%;border-collapse:collapse;font-size:10px;margin-top:4px}
+  #reportArea th,#reportArea td{border:1px solid #888;padding:3px 5px;text-align:left}
+  #reportArea th{background:#eee}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -197,6 +210,16 @@ td.num{font-weight:800}
     </div>
     <div class="entry-list" id="peeList"></div>
   </div>
+
+  <div class="card">
+    <h2>📌 Incidencias de hoy <span class="chip" id="incChip">ninguna</span></h2>
+    <div class="qbtns" style="margin-top:10px">
+      <button class="qbtn" onclick="openInc('Fuga')">💧 Fuga</button>
+      <button class="qbtn" onclick="openInc('Fiebre')">🌡️ Fiebre</button>
+      <button class="qbtn custom" onclick="openInc('')">➕ Otra</button>
+    </div>
+    <div class="entry-list" id="incList"></div>
+  </div>
 </div>
 
 <!-- ============ HISTORIAL ============ -->
@@ -212,10 +235,19 @@ td.num{font-weight:800}
   <div class="card">
     <h2>🗓️ Resumen diario</h2>
     <table>
-      <thead><tr><th>Día</th><th>Orina</th><th>Vaciados</th><th>Agua</th></tr></thead>
+      <thead><tr><th>Día</th><th>Orina</th><th>Vac.</th><th>Agua</th><th>Balance</th></tr></thead>
       <tbody id="histBody"></tbody>
     </table>
     <div class="empty" id="histEmpty" style="display:none"><span class="big-emoji">🌱</span>Todavía no hay días registrados.</div>
+  </div>
+  <div class="card">
+    <h2>📌 Incidencias registradas</h2>
+    <div class="entry-list" id="incHistList"></div>
+  </div>
+  <div class="card">
+    <h2>🩺 Informe para el médico</h2>
+    <div class="pee-count" style="margin:8px 0 12px">Genera un informe con el resumen diario (incluye balance hídrico y reparto día/noche), las incidencias, la temperatura y la evolución del peso. Desde la vista de impresión puedes guardarlo como PDF.</div>
+    <button class="btn primary" style="width:100%" onclick="informe()">🖨️ Generar informe</button>
   </div>
 </div>
 
@@ -343,6 +375,45 @@ td.num{font-weight:800}
   </div>
 </div>
 
+<!-- ============ SHEET INCIDENCIA ============ -->
+<div class="overlay" id="overlayInc">
+  <div class="sheet">
+    <h3>📌 Registrar incidencia</h3>
+    <div class="row2">
+      <div class="field">
+        <label>Tipo *</label>
+        <select id="inIncTipo">
+          <option>Fuga</option>
+          <option>Dolor</option>
+          <option>Fiebre</option>
+          <option>Escozor</option>
+          <option>Orina turbia</option>
+          <option>Mal olor</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Hora</label>
+        <input type="time" id="inIncHora">
+      </div>
+    </div>
+    <div class="field">
+      <label>Temperatura ºC (opcional)</label>
+      <input type="number" id="inIncTemp" inputmode="decimal" step="0.1" min="34" max="43" placeholder="p. ej. 38,2">
+    </div>
+    <div class="field">
+      <label>Notas (opcional)</label>
+      <input type="text" id="inIncNota" placeholder="describe lo que pasó…" maxlength="100">
+    </div>
+    <div class="sheet-btns">
+      <button class="btn ghost" onclick="closeInc()">Cancelar</button>
+      <button class="btn primary" onclick="saveInc()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div id="reportArea"></div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -353,7 +424,7 @@ td.num{font-weight:800}
    3º memoria (último recurso, con aviso visible)
    ================================================================ */
 const KEY='registro-diuresis-v2';
-let DATA={pee:[],agua:[],peso:[]};
+let DATA={pee:[],agua:[],peso:[],inc:[]};
 let CFG={nombre:'',meta:2500,vaso:250,botella:500,tema:'aqua',altura:0};
 let storageMode='mem';
 
@@ -373,6 +444,7 @@ async function loadData(){
   if(raw){
     try{ const obj=JSON.parse(raw); DATA=obj.data||DATA; CFG={...CFG,...(obj.cfg||{})}; }catch(e){}
     DATA.peso=DATA.peso||[];
+    DATA.inc=DATA.inc||[];
   }
   updateSavePill();
   applyTheme(); renderAll();
@@ -506,7 +578,7 @@ async function saveSettings(){
 }
 
 /* ================= render ================= */
-function renderAll(){renderHoy();renderHist();renderPeso();}
+function renderAll(){renderHoy();renderHist();renderPeso();renderInc();}
 
 function renderHoy(){
   document.getElementById('hoyFecha').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
@@ -576,11 +648,14 @@ function renderHist(){
   const rows=dailyMap();
   const body=document.getElementById('histBody');
   document.getElementById('histEmpty').style.display=rows.length?'none':'block';
-  body.innerHTML=rows.slice().reverse().map(r=>`
+  body.innerHTML=rows.slice().reverse().map(r=>{
+    const bal=r.agua-r.pee;
+    return `
     <tr><td>${fmtDia(r.d)}</td>
     <td class="num">${r.pee} ml</td>
     <td>${r.n}</td>
-    <td class="num ${r.agua>=CFG.meta?'tag-ok':'tag-low'}">${r.agua} ml</td></tr>`).join('');
+    <td class="num ${r.agua>=CFG.meta?'tag-ok':'tag-low'}">${r.agua} ml</td>
+    <td class="num">${bal>0?'+':''}${bal} ml</td></tr>`;}).join('');
   if(typeof Chart==='undefined')return;
   const last=rows.slice(-14);
   const labels=last.map(r=>fmtDia(r.d));
@@ -677,6 +752,111 @@ function renderPeso(){
   });
 }
 
+/* ================= incidencias ================= */
+function openInc(tipo){
+  document.getElementById('inIncTipo').value=tipo||'Fuga';
+  document.getElementById('inIncHora').value=horaAhora();
+  document.getElementById('inIncTemp').value='';
+  document.getElementById('inIncNota').value='';
+  document.getElementById('overlayInc').classList.add('show');
+  if(tipo==='Fiebre')setTimeout(()=>document.getElementById('inIncTemp').focus(),150);
+}
+function closeInc(){document.getElementById('overlayInc').classList.remove('show');}
+document.getElementById('overlayInc').addEventListener('click',e=>{if(e.target.id==='overlayInc')closeInc();});
+async function saveInc(){
+  const tipo=document.getElementById('inIncTipo').value;
+  const t=document.getElementById('inIncHora').value||horaAhora();
+  const tempStr=String(document.getElementById('inIncTemp').value).replace(',','.').trim();
+  const temp=tempStr?parseFloat(tempStr):null;
+  if(tempStr&&!(temp>=34&&temp<=43)){toast('La temperatura debe estar entre 34 y 43 ºC');return;}
+  const nota=document.getElementById('inIncNota').value.trim();
+  DATA.inc.push({d:hoy(),t,tipo,temp,nota});
+  await persist();closeInc();renderInc();
+  toast('📌 Incidencia guardada: '+tipo);
+}
+async function delInc(i){
+  if(!confirm('¿Borrar esta incidencia?'))return;
+  DATA.inc.splice(i,1);
+  await persist();renderInc();
+}
+function incLabel(p){
+  const partes=[p.tipo];
+  if(p.temp)partes.push(String(p.temp).replace('.',',')+' ºC');
+  if(p.nota)partes.push(p.nota);
+  return partes.join(' · ');
+}
+function renderInc(){
+  const hoyInc=DATA.inc.map((p,i)=>({...p,_i:i})).filter(p=>p.d===hoy()).sort((a,b)=>b.t.localeCompare(a.t));
+  document.getElementById('incChip').textContent=hoyInc.length?hoyInc.length+(hoyInc.length===1?' hoy':' hoy'):'ninguna';
+  const list=document.getElementById('incList');
+  list.innerHTML=hoyInc.length?hoyInc.map(p=>`
+    <div class="entry">
+      <div class="dot" style="background:var(--coral-pale)"></div>
+      <div class="info">
+        <div class="ml">${p.tipo} <span style="font-weight:700;color:var(--ink-soft);font-size:.78rem">· ${p.t}</span></div>
+        <div class="meta">${[p.temp?String(p.temp).replace('.',',')+' ºC':'',p.nota].filter(Boolean).join(' · ')||'&nbsp;'}</div>
+      </div>
+      <button class="del" onclick="delInc(${p._i})" aria-label="Borrar">✕</button>
+    </div>`).join(''):'';
+  /* historial de incidencias (últimas 30) */
+  const histEl=document.getElementById('incHistList');
+  if(histEl){
+    const todas=DATA.inc.map((p,i)=>({...p,_i:i})).sort((a,b)=>(b.d+b.t).localeCompare(a.d+a.t)).slice(0,30);
+    histEl.innerHTML=todas.length?todas.map(p=>`
+      <div class="entry">
+        <div class="dot" style="background:var(--coral-pale)"></div>
+        <div class="info">
+          <div class="ml">${p.tipo} <span style="font-weight:700;color:var(--ink-soft);font-size:.78rem">· ${fmtDia(p.d)} ${p.t}</span></div>
+          <div class="meta">${[p.temp?String(p.temp).replace('.',',')+' ºC':'',p.nota].filter(Boolean).join(' · ')||'&nbsp;'}</div>
+        </div>
+        <button class="del" onclick="delInc(${p._i})" aria-label="Borrar">✕</button>
+      </div>`).join(''):'<div class="empty"><span class="big-emoji">✅</span>Sin incidencias registradas.</div>';
+  }
+}
+
+/* ================= día/noche e informe ================= */
+function diaNoche(){
+  /* noche: 23:00–06:59 */
+  const dn={};
+  DATA.pee.forEach(p=>{
+    const h=parseInt(p.t.slice(0,2),10);
+    const noche=(h>=23||h<7);
+    dn[p.d]=dn[p.d]||{dia:0,noche:0};
+    dn[p.d][noche?'noche':'dia']+=p.ml;
+  });
+  return dn;
+}
+function informe(){
+  const rows=dailyMap();
+  const dn=diaNoche();
+  const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  let h='<h1>Mi Registro — Informe de seguimiento</h1>';
+  if(CFG.nombre)h+='<p><b>Paciente:</b> '+esc(CFG.nombre)+'</p>';
+  h+='<p><b>Generado:</b> '+new Date().toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+' · <b>Meta de agua:</b> '+CFG.meta+' ml/día'+(CFG.altura?' · <b>Altura:</b> '+CFG.altura+' cm':'')+'</p>';
+  h+='<h2>Resumen diario</h2><table><tr><th>Fecha</th><th>Orina (ml)</th><th>Vaciados</th><th>Día / Noche (ml)</th><th>Agua (ml)</th><th>Balance (ml)</th></tr>';
+  rows.forEach(r=>{
+    const s=dn[r.d]||{dia:0,noche:0};
+    const bal=r.agua-r.pee;
+    h+='<tr><td>'+r.d+'</td><td>'+r.pee+'</td><td>'+r.n+'</td><td>'+s.dia+' / '+s.noche+'</td><td>'+r.agua+'</td><td>'+(bal>0?'+':'')+bal+'</td></tr>';
+  });
+  h+='</table><p>Noche: vaciados entre 23:00 y 06:59. Balance: agua registrada menos orina (no incluye otros líquidos ni pérdidas).</p>';
+  const incs=DATA.inc.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t));
+  h+='<h2>Incidencias y temperatura</h2>';
+  h+=incs.length?('<table><tr><th>Fecha</th><th>Hora</th><th>Tipo</th><th>Temp (ºC)</th><th>Notas</th></tr>'+incs.map(p=>'<tr><td>'+p.d+'</td><td>'+p.t+'</td><td>'+esc(p.tipo)+'</td><td>'+(p.temp?String(p.temp).replace('.',','):'')+'</td><td>'+esc(p.nota)+'</td></tr>').join('')+'</table>'):'<p>Sin incidencias registradas en el periodo.</p>';
+  h+='<h2>Evolución del peso</h2>';
+  if(DATA.peso.length){
+    h+='<table><tr><th>Fecha</th><th>Peso (kg)</th>'+(CFG.altura?'<th>IMC</th>':'')+'</tr>';
+    DATA.peso.forEach(p=>{
+      const imc=CFG.altura?String(Math.round(p.kg/Math.pow(CFG.altura/100,2)*10)/10).replace('.',','):'';
+      h+='<tr><td>'+p.d+'</td><td>'+String(p.kg).replace('.',',')+'</td>'+(CFG.altura?'<td>'+imc+'</td>':'')+'</tr>';
+    });
+    h+='</table>';
+    if(CFG.altura)h+='<p>IMC orientativo: en adolescentes la valoración se realiza con percentiles pediátricos por edad y sexo.</p>';
+  }else h+='<p>Sin registros de peso.</p>';
+  document.getElementById('reportArea').innerHTML=h;
+  setTimeout(()=>window.print(),100);
+}
+
 /* -------- export CSV -------- */
 function exportCSV(){
   let csv='REGISTRO DE ORINA\nFecha;Hora;Cantidad (ml);Color;Notas\n';
@@ -685,6 +865,10 @@ function exportCSV(){
   });
   csv+='\nREGISTRO DE AGUA\nFecha;Hora;Cantidad (ml)\n';
   DATA.agua.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).forEach(a=>{csv+=`${a.d};${a.t};${a.ml}\n`;});
+  csv+='\nINCIDENCIAS\nFecha;Hora;Tipo;Temperatura (ºC);Notas\n';
+  DATA.inc.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).forEach(p=>{
+    csv+=`${p.d};${p.t};${p.tipo};${p.temp?String(p.temp).replace('.',','):''};"${(p.nota||'').replace(/"/g,'""')}"\n`;
+  });
   csv+='\nREGISTRO DE PESO\nFecha;Peso (kg)\n';
   DATA.peso.forEach(p=>{csv+=`${p.d};${String(p.kg).replace('.',',')}\n`;});
   csv+='\nRESUMEN DIARIO\nFecha;Orina total (ml);Vaciados;Agua total (ml)\n';
