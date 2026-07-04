@@ -219,10 +219,33 @@ td.num{font-weight:800}
   </div>
 </div>
 
+<!-- ============ PESO ============ -->
+<div class="page" id="page-peso">
+  <div class="card">
+    <h2>⚖️ Mi peso <span class="chip" id="pesoChip">sin registros</span></h2>
+    <div class="pee-total">
+      <span class="big" id="pesoUltimo" style="color:var(--acc-deep)">—</span><span class="unit">kg</span>
+    </div>
+    <div class="pee-count" id="pesoDelta"></div>
+    <div class="pee-count" id="pesoImc" style="margin-top:6px"></div>
+    <button class="btn primary" style="margin-top:14px;flex:none;width:100%" onclick="openPesoSheet()">+ Registrar peso</button>
+  </div>
+  <div class="card">
+    <h2>📈 Evolución <span class="chip">kg</span></h2>
+    <canvas id="chartPeso" height="190"></canvas>
+    <div class="empty" id="pesoEmpty" style="display:none"><span class="big-emoji">🌱</span>Registra tu peso una vez por semana<br>para ver aquí tu progreso.</div>
+  </div>
+  <div class="card">
+    <h2>🗓️ Registros</h2>
+    <div class="entry-list" id="pesoList"></div>
+  </div>
+</div>
+
 <button class="fab" onclick="openSheet()" aria-label="Añadir vaciado">+</button>
 
 <nav class="tabs">
   <button class="active" id="tabHoy" onclick="go('hoy')"><span class="ico">🏠</span>Hoy</button>
+  <button id="tabPeso" onclick="go('peso')"><span class="ico">⚖️</span>Peso</button>
   <button id="tabHist" onclick="go('hist')"><span class="ico">📈</span>Historial</button>
 </nav>
 
@@ -281,6 +304,10 @@ td.num{font-weight:800}
         <input type="number" id="setBotella" inputmode="numeric" min="100" max="2000" step="50">
       </div>
     </div>
+    <div class="field">
+      <label>Altura (cm) — opcional, para calcular el IMC</label>
+      <input type="number" id="setAltura" inputmode="numeric" min="100" max="220" placeholder="p. ej. 160">
+    </div>
     <div class="field" style="margin-bottom:6px"><label>Color de la app</label></div>
     <div class="themes">
       <div class="theme-opt t-aqua" data-t="aqua">Aqua</div>
@@ -295,6 +322,27 @@ td.num{font-weight:800}
   </div>
 </div>
 
+<!-- ============ SHEET NUEVO PESO ============ -->
+<div class="overlay" id="overlayPeso">
+  <div class="sheet">
+    <h3>⚖️ Registrar peso</h3>
+    <div class="row2">
+      <div class="field">
+        <label>Peso (kg) *</label>
+        <input type="number" id="inPesoKg" inputmode="decimal" step="0.1" placeholder="p. ej. 48,5" min="20" max="200">
+      </div>
+      <div class="field">
+        <label>Fecha</label>
+        <input type="date" id="inPesoFecha">
+      </div>
+    </div>
+    <div class="sheet-btns">
+      <button class="btn ghost" onclick="closePesoSheet()">Cancelar</button>
+      <button class="btn primary" onclick="savePeso()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -305,8 +353,8 @@ td.num{font-weight:800}
    3º memoria (último recurso, con aviso visible)
    ================================================================ */
 const KEY='registro-diuresis-v2';
-let DATA={pee:[],agua:[]};
-let CFG={nombre:'',meta:2500,vaso:250,botella:500,tema:'aqua'};
+let DATA={pee:[],agua:[],peso:[]};
+let CFG={nombre:'',meta:2500,vaso:250,botella:500,tema:'aqua',altura:0};
 let storageMode='mem';
 
 function tryLocalStorage(){
@@ -324,6 +372,7 @@ async function loadData(){
   }
   if(raw){
     try{ const obj=JSON.parse(raw); DATA=obj.data||DATA; CFG={...CFG,...(obj.cfg||{})}; }catch(e){}
+    DATA.peso=DATA.peso||[];
   }
   updateSavePill();
   applyTheme(); renderAll();
@@ -427,6 +476,7 @@ function openSettings(){
   document.getElementById('setMeta').value=CFG.meta;
   document.getElementById('setVaso').value=CFG.vaso;
   document.getElementById('setBotella').value=CFG.botella;
+  document.getElementById('setAltura').value=CFG.altura||'';
   document.querySelectorAll('.theme-opt').forEach(el=>el.classList.toggle('sel',el.dataset.t===CFG.tema));
   document.getElementById('overlaySet').classList.add('show');
 }
@@ -444,8 +494,11 @@ async function saveSettings(){
   const bot=parseInt(document.getElementById('setBotella').value,10);
   if(!(meta>=500&&meta<=5000)){toast('La meta debe estar entre 500 y 5000 ml');return;}
   if(!(vaso>=50&&vaso<=1000)||!(bot>=100&&bot<=2000)){toast('Revisa los ml de los botones rápidos');return;}
+  const altStr=document.getElementById('setAltura').value.trim();
+  const alt=altStr?parseInt(altStr,10):0;
+  if(altStr&&!(alt>=100&&alt<=220)){toast('La altura debe estar entre 100 y 220 cm');return;}
   CFG.nombre=document.getElementById('setNombre').value.trim();
-  CFG.meta=meta;CFG.vaso=vaso;CFG.botella=bot;
+  CFG.meta=meta;CFG.vaso=vaso;CFG.botella=bot;CFG.altura=alt;
   const sel=document.querySelector('.theme-opt.sel');
   CFG.tema=sel?sel.dataset.t:'aqua';
   await persist();applyTheme();closeSettings();renderAll();
@@ -453,7 +506,7 @@ async function saveSettings(){
 }
 
 /* ================= render ================= */
-function renderAll(){renderHoy();renderHist();}
+function renderAll(){renderHoy();renderHist();renderPeso();}
 
 function renderHoy(){
   document.getElementById('hoyFecha').textContent=new Date().toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
@@ -549,6 +602,81 @@ function renderHist(){
   });
 }
 
+/* ================= peso ================= */
+let chPeso=null;
+function openPesoSheet(){
+  document.getElementById('inPesoKg').value='';
+  document.getElementById('inPesoFecha').value=hoy();
+  document.getElementById('overlayPeso').classList.add('show');
+  setTimeout(()=>document.getElementById('inPesoKg').focus(),150);
+}
+function closePesoSheet(){document.getElementById('overlayPeso').classList.remove('show');}
+document.getElementById('overlayPeso').addEventListener('click',e=>{if(e.target.id==='overlayPeso')closePesoSheet();});
+async function savePeso(){
+  const kg=parseFloat(String(document.getElementById('inPesoKg').value).replace(',','.'));
+  if(!(kg>=20&&kg<=200)){toast('Indica un peso válido en kg (20–200)');return;}
+  const d=document.getElementById('inPesoFecha').value||hoy();
+  const prev=DATA.peso.findIndex(p=>p.d===d);
+  if(prev>=0)DATA.peso[prev].kg=kg; else DATA.peso.push({d,kg});
+  DATA.peso.sort((a,b)=>a.d.localeCompare(b.d));
+  await persist();closePesoSheet();renderPeso();
+  toast('⚖️ Peso guardado: '+String(kg).replace('.',',')+' kg');
+}
+async function delPeso(i){
+  if(!confirm('¿Borrar este registro de peso?'))return;
+  DATA.peso.splice(i,1);
+  await persist();renderPeso();
+}
+function renderPeso(){
+  const arr=DATA.peso;
+  const chip=document.getElementById('pesoChip');
+  chip.textContent=arr.length?arr.length+(arr.length===1?' registro':' registros'):'sin registros';
+  const last=arr[arr.length-1];
+  document.getElementById('pesoUltimo').textContent=last?String(last.kg).replace('.',','):'—';
+  const deltaEl=document.getElementById('pesoDelta');
+  if(arr.length>=2){
+    const dif=Math.round((last.kg-arr[arr.length-2].kg)*10)/10;
+    deltaEl.textContent=dif>0?('+'+String(dif).replace('.',',')+' kg desde el registro anterior 💪')
+      :dif<0?(String(dif).replace('.',',')+' kg desde el registro anterior')
+      :'Igual que el registro anterior';
+  }else deltaEl.textContent=last?'Último registro: '+fmtDia(last.d):'';
+  const imcEl=document.getElementById('pesoImc');
+  if(last&&CFG.altura){
+    const imc=Math.round(last.kg/Math.pow(CFG.altura/100,2)*10)/10;
+    imcEl.textContent='IMC: '+String(imc).replace('.',',')+' · en adolescentes se valora con percentiles: consúltalo con tu médico';
+  }else if(last){
+    imcEl.textContent='Añade tu altura en Ajustes ⚙ para ver el IMC';
+  }else imcEl.textContent='';
+  /* lista */
+  const list=document.getElementById('pesoList');
+  if(!arr.length){
+    list.innerHTML='<div class="empty"><span class="big-emoji">⚖️</span>Aún no hay pesos registrados.</div>';
+  }else{
+    list.innerHTML=arr.map((p,i)=>({...p,_i:i})).slice().reverse().map(p=>`
+      <div class="entry">
+        <div class="dot" style="background:var(--acc-pale)"></div>
+        <div class="info">
+          <div class="ml">${String(p.kg).replace('.',',')} kg</div>
+          <div class="meta">${fmtDia(p.d)}</div>
+        </div>
+        <button class="del" onclick="delPeso(${p._i})" aria-label="Borrar">✕</button>
+      </div>`).join('');
+  }
+  /* gráfico */
+  const emptyEl=document.getElementById('pesoEmpty');
+  const cv=document.getElementById('chartPeso');
+  if(typeof Chart==='undefined')return;
+  if(arr.length<2){emptyEl.style.display='block';cv.style.display='none';if(chPeso){chPeso.destroy();chPeso=null;}return;}
+  emptyEl.style.display='none';cv.style.display='block';
+  const ultimos=arr.slice(-20);
+  if(chPeso)chPeso.destroy();
+  chPeso=new Chart(cv,{
+    type:'line',
+    data:{labels:ultimos.map(p=>fmtDia(p.d)),datasets:[{data:ultimos.map(p=>p.kg),borderColor:accColor(),backgroundColor:'rgba(23,162,180,.12)',fill:true,tension:.35,pointRadius:4,pointBackgroundColor:accDeep()}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{grid:{color:'#E7F0F3'}},x:{grid:{display:false}}}}
+  });
+}
+
 /* -------- export CSV -------- */
 function exportCSV(){
   let csv='REGISTRO DE ORINA\nFecha;Hora;Cantidad (ml);Color;Notas\n';
@@ -557,6 +685,8 @@ function exportCSV(){
   });
   csv+='\nREGISTRO DE AGUA\nFecha;Hora;Cantidad (ml)\n';
   DATA.agua.slice().sort((a,b)=>(a.d+a.t).localeCompare(b.d+b.t)).forEach(a=>{csv+=`${a.d};${a.t};${a.ml}\n`;});
+  csv+='\nREGISTRO DE PESO\nFecha;Peso (kg)\n';
+  DATA.peso.forEach(p=>{csv+=`${p.d};${String(p.kg).replace('.',',')}\n`;});
   csv+='\nRESUMEN DIARIO\nFecha;Orina total (ml);Vaciados;Agua total (ml)\n';
   dailyMap().forEach(r=>{csv+=`${r.d};${r.pee};${r.n};${r.agua}\n`;});
   const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
@@ -569,12 +699,13 @@ function exportCSV(){
 
 /* -------- navegación -------- */
 function go(p){
-  document.getElementById('page-hoy').classList.toggle('active',p==='hoy');
-  document.getElementById('page-hist').classList.toggle('active',p==='hist');
-  document.getElementById('tabHoy').classList.toggle('active',p==='hoy');
-  document.getElementById('tabHist').classList.toggle('active',p==='hist');
+  ['hoy','peso','hist'].forEach(x=>{
+    document.getElementById('page-'+x).classList.toggle('active',p===x);
+    document.getElementById('tab'+x.charAt(0).toUpperCase()+x.slice(1)).classList.toggle('active',p===x);
+  });
   document.querySelector('.fab').style.display=p==='hoy'?'flex':'none';
   if(p==='hist')renderHist();
+  if(p==='peso')renderPeso();
 }
 
 setInterval(renderHoy,60000);
