@@ -1,4 +1,4 @@
-const CACHE = 'mi-registro-v2';
+const CACHE = 'mi-registro-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -7,7 +7,6 @@ const ASSETS = [
   './icon-512.png'
 ];
 
-// Instalación robusta: cachea lo que pueda, nunca falla
 self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE).then(c =>
@@ -24,18 +23,33 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Caché primero, red como respaldo; guarda sobre la marcha lo que se pida
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-  e.respondWith(
-    caches.match(e.request).then(hit =>
-      hit || fetch(e.request).then(res => {
-        if (res && res.ok && e.request.url.startsWith('http')) {
-          const clone = res.clone();
-          caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
-        }
+  const esHTML = e.request.mode === 'navigate' ||
+    (e.request.headers.get('accept') || '').includes('text/html');
+
+  if (esHTML) {
+    // HTML: RED PRIMERO (así las actualizaciones llegan al momento);
+    // caché solo si no hay conexión
+    e.respondWith(
+      fetch(e.request).then(res => {
+        const clone = res.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
         return res;
-      }).catch(() => caches.match('./index.html'))
-    )
-  );
+      }).catch(() => caches.match(e.request).then(h => h || caches.match('./index.html')))
+    );
+  } else {
+    // Recursos estáticos (iconos, fuentes, librerías): caché primero
+    e.respondWith(
+      caches.match(e.request).then(hit =>
+        hit || fetch(e.request).then(res => {
+          if (res && res.ok && e.request.url.startsWith('http')) {
+            const clone = res.clone();
+            caches.open(CACHE).then(c => c.put(e.request, clone)).catch(() => {});
+          }
+          return res;
+        })
+      )
+    );
+  }
 });
